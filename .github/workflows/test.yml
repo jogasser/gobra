@@ -206,7 +206,6 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Push entire image
-        if: env.SHOULD_DEPLOY == 'true'
         uses: docker/build-push-action@v2
         with:
           context: .
