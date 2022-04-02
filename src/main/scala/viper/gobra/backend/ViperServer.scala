@@ -92,7 +92,9 @@ class ViperServer(server: ViperCoreServer, backendConfig: ViperVerifierConfig)(i
 
   override def stopVerification(programId: String): Unit = {
     activeClients.get(programId) match {
-      case Some(clientActor) => clientActor ! PoisonPill
+      case Some(clientActor) =>
+        clientActor ! PoisonPill
+        server.executor.restart()
       case None =>
     }
   }
