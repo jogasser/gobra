@@ -15,9 +15,12 @@ import viper.silver
 import viper.silver.verifier.VerificationResult
 import viper.silver.{ast => vpr}
 
+import scala.collection.concurrent.{Map, TrieMap}
 import scala.concurrent.Future
 
 object BackendVerifier {
+
+  private val activeTasks: Map[String, ViperVerifier] = TrieMap()
 
   case class Task(
                    program: vpr.Program,
@@ -51,6 +54,8 @@ object BackendVerifier {
       val verifier = config.backend.create(exePaths, config)
       val reporter = BacktranslatingReporter(config.reporter, task.backtrack, config)
 
+      activeTasks.put(config.taskName, verifier)
+
       if (!config.shouldChop) {
         verifier.verify(config.taskName, reporter, task.program)(executor)
       } else {
@@ -79,7 +84,18 @@ object BackendVerifier {
       }
     }
 
-    verificationResults.map(convertVerificationResult(_, task.backtrack))
+    verificationResults
+      .map(result => {
+        activeTasks.remove(config.taskName)
+        convertVerificationResult(result, task.backtrack)
+      })
+  }
+
+  def stopVerification(taskName: String): Unit = {
+    activeTasks.get(taskName) match {
+      case Some(verifier) =>
+      case None =>
+    }
   }
 
   /**

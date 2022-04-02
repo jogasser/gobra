@@ -9,12 +9,13 @@ package viper.gobra.backend
 import viper.silver.ast.Program
 import viper.silver.reporter.{ExceptionReport, Message, OverallFailureMessage, OverallSuccessMessage, Reporter}
 import viper.silver.verifier.{Success, VerificationResult}
-import akka.actor.{Actor, Props, Status}
+import akka.actor.{Actor, ActorRef, PoisonPill, Props, Status, actorRef2Scala}
 
 import scala.concurrent.{Await, Future, Promise}
 import viper.gobra.util.GobraExecutionContext
 import viper.server.core.{CarbonConfig, SiliconConfig, VerificationExecutionContext, ViperBackendConfig, ViperCoreServer, ViperServerBackendNotFoundException}
 
+import scala.collection.concurrent.{Map, TrieMap}
 import scala.concurrent.duration.Duration
 
 object ViperServer {
@@ -65,6 +66,8 @@ object ViperServerConfig {
 class ViperServer(server: ViperCoreServer, backendConfig: ViperVerifierConfig)(implicit executor: VerificationExecutionContext) extends ViperVerifier {
   import ViperServer._
 
+  private val activeClients: Map[String, ActorRef] = TrieMap()
+
   override def verify(programID: String, reporter: Reporter, program: Program)(_ctx: GobraExecutionContext): Future[VerificationResult] = {
     // convert ViperVerifierConfig to ViperBackendConfig:
 
@@ -82,7 +85,15 @@ class ViperServer(server: ViperCoreServer, backendConfig: ViperVerifierConfig)(i
     // we do not only need to return a future but also forward all messages to the reporter
     val promise: Promise[VerificationResult] = Promise()
     val clientActor = executor.actorSystem.actorOf(Props(new GlueActor(reporter, promise)))
+    activeClients.put(programID, clientActor)
     server.streamMessages(handle, clientActor)
-    promise.future
+    promise.future.andThen(_ => activeClients.remove(programID))
+  }
+
+  override def stopVerification(programId: String): Unit = {
+    activeClients.get(programId) match {
+      case Some(clientActor) => clientActor ! PoisonPill
+      case None =>
+    }
   }
 }

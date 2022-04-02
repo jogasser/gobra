@@ -95,6 +95,7 @@ trait GoVerifier extends StrictLogging {
         Await.result(future, config.packageTimeout)
       } catch {
         case _: TimeoutException =>
+          BackendVerifier.stopVerification(pkgId)
           logger.error(s"The verification of package $pkgId got terminated after " + config.packageTimeout.toString)
           statsCollector.report(VerificationTaskFinishedMessage(pkgId))
           val errors = statsCollector.getTimeoutErrors(pkgId)
