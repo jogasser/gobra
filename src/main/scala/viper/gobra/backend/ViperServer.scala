@@ -94,7 +94,6 @@ class ViperServer(server: ViperCoreServer, backendConfig: ViperVerifierConfig)(i
     activeClients.get(programId) match {
       case Some(clientActor) =>
         clientActor ! PoisonPill
-        server.executor.restart()
       case None =>
     }
   }

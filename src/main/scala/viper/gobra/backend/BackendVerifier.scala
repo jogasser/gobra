@@ -93,7 +93,7 @@ object BackendVerifier {
 
   def stopVerification(taskName: String): Unit = {
     activeTasks.get(taskName) match {
-      case Some(verifier) =>
+      case Some(verifier) => verifier.stopVerification(taskName)
       case None =>
     }
   }
